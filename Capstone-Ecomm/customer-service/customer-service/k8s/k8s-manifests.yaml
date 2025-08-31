@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: customer-service-config
+  labels:
+    app: customer-service
+data:
+  # add config values here as needed
+  SPRING_DATASOURCE_URL: "jdbc:h2:mem:customerdb"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: customer-service-deployment
+  labels:
+    app: customer-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: customer-service
+  template:
+    metadata:
+      labels:
+        app: customer-service
+    spec:
+      containers:
+        - name: customer-service
+          # Replace this image with your registry/image:tag
+          image: your-registry/customer-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8081
+          envFrom:
+            - configMapRef:
+                name: customer-service-config
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8081
+            initialDelaySeconds: 30
+            periodSeconds: 30
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: customer-service
+  labels:
+    app: customer-service
+spec:
+  type: ClusterIP
+  selector:
+    app: customer-service
+  ports:
+    - protocol: TCP
+      port: 8081
+      targetPort: 8081
